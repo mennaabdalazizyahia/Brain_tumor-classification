@@ -106,7 +106,6 @@ else:
     
     progress_bar = st.progress(0)
     for i in range(100):
-        time.sleep(0.02)
         progress_bar.progress(i + 1)
     
     st.success("System ready! Please upload an MRI image for classification")
@@ -128,3 +127,4 @@ with st.sidebar:
 
 st.markdown("---")
 st.markdown("Built with using Streamlit & TensorFlow")
+
