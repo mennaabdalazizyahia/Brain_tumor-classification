@@ -5,82 +5,51 @@ from PIL import Image
 import gdown
 import os
 import time
-import h5py
-import json
 
 FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
 MODEL_PATH = "brain_tumor_model.h5"
 
-def fix_model_config():
-    try:
-        with h5py.File(MODEL_PATH, 'r+') as f:
-            if 'model_config' in f.attrs:
-                model_config = f.attrs['model_config']
-                if isinstance(model_config, bytes):
-                    model_config = model_config.decode('utf-8')
-                
-                model_config = model_config.replace('"batch_shape":', '"batch_input_shape":')
-                model_config = model_config.replace("'batch_shape':", "'batch_input_shape':")
-                
-                model_config = model_config.replace('"class_name": "InputLayer"', '"class_name": "InputLayer", "config": {"batch_input_shape": [null, 224, 224, 3]}')
-                
-                f.attrs['model_config'] = model_config.encode('utf-8')
-                return True
-        return False
-    except Exception as e:
-        st.warning(f"Config fix attempt: {e}")
-        return False
+CUSTOM_OBJECTS = {
+    'InputLayer': tf.keras.layers.InputLayer,
+    'ZeroPadding2D': tf.keras.layers.ZeroPadding2D,
+    'DTypePolicy': tf.keras.mixed_precision.Policy,
+    'Float32': tf.keras.mixed_precision.Policy('float32'),
+    'Conv2D': tf.keras.layers.Conv2D,
+    'BatchNormalization': tf.keras.layers.BatchNormalization,
+    'ReLU': tf.keras.layers.ReLU,
+    'MaxPooling2D': tf.keras.layers.MaxPooling2D,
+    'GlobalAveragePooling2D': tf.keras.layers.GlobalAveragePooling2D,
+    'Dense': tf.keras.layers.Dense,
+    'Dropout': tf.keras.layers.Dropout,
+    'Flatten': tf.keras.layers.Flatten
+}
 
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
-        with st.spinner('Downloading model... (This may take a few minutes)'):
+        with st.spinner('📥 Downloading model... (This may take a few minutes)'):
             url = f"https://drive.google.com/uc?id={FILE_ID}"
             gdown.download(url, MODEL_PATH, quiet=False)
-            st.success("Model downloaded successfully!")
     
-    if os.path.exists(MODEL_PATH):
-        file_size = os.path.getsize(MODEL_PATH) / (1024*1024)
-        st.info(f"Model file size: {file_size:.2f} MB")
-    
-    with st.spinner('Loading model...'):
+    with st.spinner('Loading model with Keras 3 compatibility...'):
         try:
-            model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-            st.success("Model loaded successfully!")
+            model = tf.keras.models.load_model(
+                MODEL_PATH, 
+                compile=False,
+                custom_objects=CUSTOM_OBJECTS
+            )
+            st.success("Model loaded successfully with custom objects!")
             return model
         except Exception as e:
-            st.warning(f"First attempt failed: {e}")
-            
-            try:
-                st.info("Attempting to fix model configuration...")
-                if fix_model_config():
-                    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-                    st.success("Model loaded after configuration fix!")
-                    return model
-            except Exception as e2:
-                st.error(f"Second attempt failed: {e2}")
-                
-            try:
-                st.info("Trying with custom objects...")
-                custom_objects = {
-                    'InputLayer': tf.keras.layers.InputLayer,
-                }
-                model = tf.keras.models.load_model(
-                    MODEL_PATH, 
-                    compile=False,
-                    custom_objects=custom_objects
-                )
-                st.success("Model loaded with custom objects!")
-                return model
-            except Exception as e3:
-                st.error(f"Third attempt failed: {e3}")
-                return None
+            st.error(f"Error loading model: {e}")
+            return None
 
 st.set_page_config(page_title="Brain Tumor Detection", page_icon="🧠", layout="wide")
 
 st.title("🧠 Brain Tumor Detection System")
 st.markdown("---")
 st.write(f"**TensorFlow Version:** {tf.__version__}")
+
 model = load_model()
 
 if model is not None:
@@ -146,29 +115,24 @@ if model is not None:
         
 else:
     st.error("""
-    **❌ Failed to load the model. The model file might be:**
+    **❌solutions :**
     
-    - Created with a very old TensorFlow version
-    - Corrupted during download
-    - Incompatible with current TensorFlow
+    1. **install keras-core :**
+    ```bash
+    pip install keras-core
+    ```
     
-    **Please try re-downloading the model or contact the model provider.**
+    2. **another version of TensorFlow**
+    ```python
+    !pip install tensorflow==2.15.0
+    ```
     """)
 
 with st.sidebar:
     st.header("About")
     st.markdown("""
     This AI-powered application analyzes MRI scans to detect potential brain tumors.
-    
-    **How to use:**
-    1. Upload a clear MRI scan image
-    2. Wait for the analysis
-    3. Review the results
     """)
-    
-    st.header("Technical Info")
-    st.write(f"TensorFlow: {tf.__version__}")
-    st.write(f"Model: {MODEL_PATH}")
 
 st.markdown("---")
 st.markdown("Built with Streamlit and TensorFlow")
