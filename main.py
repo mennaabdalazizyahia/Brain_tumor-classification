@@ -55,7 +55,7 @@ if model is not None:
         with col2:
             st.subheader("classification Results")
             
-            processed_image = image.resize((256, 256))
+            processed_image = image.resize((224, 224))
             img_array = np.array(processed_image) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
             
@@ -107,12 +107,12 @@ with st.sidebar:
     st.markdown("""
     This AI-powered application classifies MRI scans to detect potential brain tumors.
     
-    **How to use:**
+    --How to use:
     1. Upload a clear MRI scan image
     2. Wait for the analysis
     3. Review the results
     
-    ** Important Notes:**
+    --Important Notes:
     - This tool is for screening purposes only
     - Always consult with medical professionals
     - Results should be verified by qualified radiologists
@@ -125,3 +125,4 @@ with st.sidebar:
 
 st.markdown("---")
 st.markdown("*Built with using Streamlit and TensorFlow*")
+
