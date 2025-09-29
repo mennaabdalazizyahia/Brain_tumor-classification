@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import gdown
 import os
-import time
+import time  
 
 FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
 MODEL_PATH = "brain_tumor_model.h5"
@@ -54,18 +54,18 @@ if model:
             st.info(f"**Image Details:** {image.size[0]}x{image.size[1]} pixels")
         
         with col2:
-            st.subheader("Prediction Results")
+            st.subheader("🔍 Classification Results")
             
             processed_image = image.resize((224, 224))
             img_array = np.array(processed_image) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
             
-            if st.button("Classify Image", type="primary"):
-                with st.spinner('Classifying MRI scan...'):
+            if st.button("🔬 Classify Image", type="primary"):
+                with st.spinner('Classify MRI scan...'):
                     try:
                         prediction = model.predict(img_array, verbose=0)[0][0]
                         
-                        st.markdown("###Diagnosis:")
+                        st.markdown("### Diagnosis:")
                         
                         if prediction > 0.5:
                             st.error(f"**🚨 TUMOR DETECTED**")
@@ -78,56 +78,42 @@ if model:
                             st.write(f"**Confidence Level:** {(1-prediction)*100:.2f}%")
                             
                             st.progress(1 - prediction)
-                            st.write(f"Healthy scan confidence: {(1-prediction)*100:.1f}%")
+                            st.write(f"💚 Healthy scan confidence: {(1-prediction)*100:.1f}%")
                             
                     except:
-                        st.info("Classification completed")
+                        st.info("🔍 Classification completed")
                         st.success("✅ No signs of tumor detected")
-                        
-                        st.markdown("---")
-                        st.info("For best results, ensure the image is clear and focused on the brain area.")
     
     else:
         st.info("Please upload an MRI image to begin classification")
         
-        with st.expander("- How to use this tool"):
+        with st.expander("How to use this tool"):
             st.markdown("""
-            1. **Upload** a clear MRI brain scan image
-            2. **Click** the 'Classify Image' button  
-            3. **Review** the classification results
-            4. **Consult** a medical professional for diagnosis
+            1. **Click on 'Browse files'** or drag and drop an image
+            2. **Select** an MRI brain scan from your computer
+            3. **Click** the 'Classify Image' button  
+            4. **Review** the classification results
             
             **Supported formats:** JPG, PNG, JPEG
-            **Recommended:** Clear, well-lit MRI scans
+            **Recommended:** Clear MRI brain scans
             """)
             
 else:
-    st.info("System initializing...")
-    st.info("Please wait while the AI model loads")
+    st.info("🔄 System initializing...")
     
     progress_bar = st.progress(0)
     for i in range(100):
-        time.sleep(0.02)
+        time.sleep(0.02) 
         progress_bar.progress(i + 1)
     
     st.success("System ready! Please upload an MRI image for classification")
 
 with st.sidebar:
-    st.header("- About")
+    st.header("About")
     st.markdown("""
-    This AI-powered tool classifies MRI scans 
-    to detect potential brain tumors.
-    
-    **Disclaimer:**
-    - For research purposes only
-    - Always consult medical professionals
-    - Not a replacement for medical diagnosis
+    This AI tool classifies MRI scans 
+    for brain tumor detection.
     """)
-    
-    st.header("Technical Info")
-    st.write(f"TensorFlow: {tf.__version__}")
 
 st.markdown("---")
-st.markdown("Built with using Streamlit & TensorFlow")
-
-
+st.markdown("Built with Streamlit & TensorFlow")
