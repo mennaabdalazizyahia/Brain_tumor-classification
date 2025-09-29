@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import gdown
 import os
+import time
 
 FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
 MODEL_PATH = "brain_tumor_model.h5"
@@ -106,6 +107,7 @@ else:
     
     progress_bar = st.progress(0)
     for i in range(100):
+        time.sleep(0.02)
         progress_bar.progress(i + 1)
     
     st.success("System ready! Please upload an MRI image for classification")
@@ -127,4 +129,5 @@ with st.sidebar:
 
 st.markdown("---")
 st.markdown("Built with using Streamlit & TensorFlow")
+
 
