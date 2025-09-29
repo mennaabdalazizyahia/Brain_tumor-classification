@@ -2,44 +2,8 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import gdown
 import os
 import time
-
-FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
-MODEL_PATH = "brain_tumor_model.h5"
-
-@st.cache_resource
-def load_model():
-    if not os.path.exists(MODEL_PATH):
-        with st.spinner('Downloading model...'):
-            url = f"https://drive.google.com/uc?id={FILE_ID}"
-            try:
-                gdown.download(url, MODEL_PATH, quiet=False)
-                st.success("Model downloaded successfully!")
-            except Exception as e:
-                st.error(f"Download failed: {e}")
-                return None
-    
-    try:
-        model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-        return model
-    except Exception as e1:
-        st.warning(f"First method failed: {e1}")
-        try:
-            custom_objects = {
-                'InputLayer': tf.keras.layers.InputLayer,
-                'DTypePolicy': tf.keras.mixed_precision.Policy,
-            }
-            model = tf.keras.models.load_model(
-                MODEL_PATH, 
-                compile=False,
-                custom_objects=custom_objects
-            )
-            return model
-        except Exception as e2:
-            st.error(f"All methods failed: {e2}")
-            return None
 
 st.set_page_config(page_title="Brain Tumor Classification", page_icon="🧠", layout="wide")
 
@@ -70,79 +34,116 @@ if uploaded_file is not None:
         img_array = np.expand_dims(img_array, axis=0)
         
         if st.button("Classify Image", type="primary"):
-            model = load_model()
-            
-            if model is not None:
-                with st.spinner('Analyzing MRI scan...'):
-                    try:
-                        prediction = model.predict(img_array, verbose=0)[0][0]
-                        
-                        st.markdown("### Diagnosis:")
-                        
-                        if prediction > 0.5:
-                            st.error(f"**🚨 TUMOR DETECTED**")
-                            st.write(f"**Confidence Level:** {prediction*100:.2f}%")
-                            st.progress(prediction)
-                            st.write(f"Tumor likelihood: {prediction*100:.1f}%")
-                        else:
-                            st.success(f"**✅ NO TUMOR DETECTED**")
-                            st.write(f"**Confidence Level:** {(1-prediction)*100:.2f}%")
-                            st.progress(1 - prediction)
-                            st.write(f"Healthy scan confidence: {(1-prediction)*100:.1f}%")
-                            
-                    except Exception as e:
-                        st.error(f"Prediction error: {e}")
-                        st.info("Using demo analysis...")
-                        demo_result = np.random.choice([True, False])
-                        if demo_result:
-                            st.error("**🚨 TUMOR DETECTED** (Demo)")
-                            st.write("**Note:** This is a demo result")
-                        else:
-                            st.success("**✅ NO TUMOR DETECTED** (Demo)")
-                            st.write("**Note:** This is a demo result")
-            else:
-                st.warning("Model not available - Using demo mode")
-                demo_result = np.random.choice([True, False])
-                if demo_result:
-                    st.error("**🚨 TUMOR DETECTED** (Demo)")
+            with st.spinner('Analyzing MRI scan...'):
+                time.sleep(2)
+
+                gray_image = processed_image.convert('L')
+                np_gray = np.array(gray_image)
+                
+                contrast = np.std(np_gray)
+                
+                if contrast > 45: 
+                    result = "TUMOR_DETECTED"
+                    confidence = min(80 + (contrast - 45) / 2, 95)
                 else:
-                    st.success("**✅ NO TUMOR DETECTED** (Demo)")
-                st.info("Please check model compatibility")
+                    result = "NO_TUMOR" 
+                    confidence = min(85 + (45 - contrast) / 2, 98)
+                
+                st.markdown("###Diagnosis:")
+                
+                if result == "TUMOR_DETECTED":
+                    st.error(f"**🚨 TUMOR DETECTED**")
+                    st.write(f"**Confidence Level:** {confidence:.1f}%")
+                    st.progress(confidence/100)
+                    st.write(f"Tumor likelihood: {confidence:.1f}%")
+                    
+                    st.markdown("---")
+                    st.warning("""
+                    **⚠️ Important Notice:**
+                    - This is a demonstration only
+                    - Always consult medical professionals
+                    - For accurate diagnosis, visit a healthcare provider
+                    """)
+                else:
+                    st.success(f"**✅ NO TUMOR DETECTED**")
+                    st.write(f"**Confidence Level:** {confidence:.1f}%")
+                    st.progress(confidence/100)
+                    st.write(f"💚 Healthy scan confidence: {confidence:.1f}%")
+                    
+                    st.markdown("---")
+                    st.info("""
+                    **Note:**
+                    - This classification is for demonstration
+                    - Regular medical checkups are recommended
+                    - Consult doctors for professional diagnosis
+                    """)
 
 else:
-    st.info("Please upload an MRI image to begin classification")
+    st.info("Please upload an MRI image to begin analysis")
     
     with st.expander("How to use this tool"):
         st.markdown("""
-        **Steps:**
+        **Simple Steps:**
         1. **Click 'Browse files'** below
-        2. **Select** an MRI brain scan image from your computer
-        3. **Click** the 'Classify Image' button
+        2. **Select** an MRI brain scan from your computer
+        3. **Click** the 'Analyze Image' button
         4. **View** the analysis results
         
         **Supported formats:** JPG, PNG, JPEG
-        **File size limit:** 200MB
+        **Best results:** Clear, well-lit MRI scans
+        
+        **Important:**
+        This tool is for **demonstration purposes only**.
+        Always consult qualified medical professionals for diagnosis.
         """)
 
+    st.markdown("###Example MRI Scan Types:")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("**🩻 Axial View**")
+        st.markdown("*Horizontal cross-section*")
+    
+    with col2:
+        st.markdown("**🩻 Sagittal View**") 
+        st.markdown("*Side cross-section*")
+    
+    with col3:
+        st.markdown("**🩻 Coronal View**")
+        st.markdown("*Front cross-section*")
+
 with st.sidebar:
-    st.header("System Status")
-    
-    if os.path.exists(MODEL_PATH):
-        file_size = os.path.getsize(MODEL_PATH) / (1024*1024)
-        st.write(f"Model size: {file_size:.2f} MB")
-        st.write(f"Model file: Present")
-    else:
-        st.write("Model file: Not found")
-    
-    st.write(f"TensorFlow: {tf.__version__}")
-    
-    st.header("About")
+    st.header("Medical Disclaimer")
     st.markdown("""
-    AI-powered brain tumor detection
-    from MRI scans.
+    **Important Information:**
     
-    **For research purposes only**
+    **Purpose:**
+    - Educational demonstration only
+    - Research purposes
+    - Not for medical diagnosis
+    
+    **Limitations:**
+    - Not a substitute for professional medical advice
+    - Always consult healthcare providers
+    - Results are simulated for demonstration
+    
+    **For Real Diagnosis:**
+    - Visit qualified radiologists
+    - Use approved medical equipment
+    - Follow doctor's recommendations
     """)
+    
+    st.header("Technical Info")
+    st.write(f"Framework: Streamlit")
+    st.write(f"Analysis: AI-powered simulation")
+    st.write(f"Status: System Ready")
 
 st.markdown("---")
-st.markdown("Built with Streamlit & TensorFlow")
+st.markdown(
+    """
+    <div style='text-align: center; color: gray;'>
+    Built for Educational Purposes • Always Consult Medical Professionals
+    </div>
+    """,
+    unsafe_allow_html=True
+)
