@@ -34,7 +34,7 @@ if uploaded_file is not None:
         img_array = np.expand_dims(img_array, axis=0)
         
         if st.button("Classify Image", type="primary"):
-            with st.spinner('Analyzing MRI scan...'):
+            with st.spinner('Classifying MRI scan...'):
                 time.sleep(2)
 
                 gray_image = processed_image.convert('L')
@@ -49,7 +49,7 @@ if uploaded_file is not None:
                     result = "NO_TUMOR" 
                     confidence = min(85 + (45 - contrast) / 2, 98)
                 
-                st.markdown("###Diagnosis:")
+                st.markdown("### Diagnosis:")
                 
                 if result == "TUMOR_DETECTED":
                     st.error(f"**🚨 TUMOR DETECTED**")
@@ -79,7 +79,7 @@ if uploaded_file is not None:
                     """)
 
 else:
-    st.info("Please upload an MRI image to begin analysis")
+    st.info("Please upload an MRI image to begin classification")
     
     with st.expander("How to use this tool"):
         st.markdown("""
@@ -147,3 +147,4 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
