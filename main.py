@@ -1,38 +1,33 @@
 import streamlit as st
+import tensorflow as tf
 import numpy as np
 from PIL import Image
-import tensorflow as tf
-from tensorflow.keras.models import load_model
+import gdown
+import os
 
+FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
 MODEL_PATH = "brain_tumor_model.h5"
-IMG_SIZE = (224, 224)  
 
-@st.cache_resource
-def load_trained_model():
-    model = load_model(MODEL_PATH, compile=False)
-    return model
+if not os.path.exists(MODEL_PATH):
+    url = f"https://drive.google.com/uc?id={FILE_ID}"
+    gdown.download(url, MODEL_PATH, quiet=False)
 
-model = load_trained_model()
+model = tf.keras.models.load_model(MODEL_PATH)
 
-st.title("🧠 Brain Tumor MRI Classifier")
-st.write("Upload the image : ")
+st.title("🧠 Brain Tumor Detection")
 
-uploaded_file = st.file_uploader("Upload MRI Image", type=["jpg","jpeg","png"])
+uploaded_file = st.file_uploader("Upload MRI image", type=["jpg", "png", "jpeg","JPG"])
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("RGB")
+if uploaded_file:
+    image = Image.open(uploaded_file).resize((256, 256))
     st.image(image, caption="Uploaded MRI", use_column_width=True)
 
-    img_resized = image.resize(IMG_SIZE)
-    img_array = np.array(img_resized) / 255.0
+    img_array = np.array(image) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    prediction = model.predict(img_array)
+    prediction = model.predict(img_array)[0][0]
 
-    if prediction.shape[1] == 1:  
-        prob = prediction[0][0]
-        label = "Tumor" if prob > 0.5 else "No Tumor"
-        st.write(f"### Prediction: **{label}** (prob={prob:.2f})")
+    if prediction > 0.5:
+        st.error("⚠️ Tumor detected")
     else:
-        class_idx = np.argmax(prediction)
-        st.write(f"### Prediction: Class {class_idx} - Probabilities: {prediction}")
+        st.success("✅ No tumor detected")
