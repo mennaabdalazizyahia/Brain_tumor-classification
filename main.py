@@ -10,25 +10,18 @@ MODEL_PATH = "brain_tumor_model.h5"
 
 if not os.path.exists(MODEL_PATH):
     url = f"https://drive.google.com/uc?id={FILE_ID}"
-    gdown.download(url, MODEL_PATH, quiet=False)
+    try:
+        gdown.download(url, MODEL_PATH, quiet=False)
+        st.success("Model downloaded successfully!")
+    except Exception as e:
+        st.error(f"Error downloading model: {e}")
+else:
+    st.success("Model file already exists!")
 
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-
-st.title("🧠 Brain Tumor Detection")
-
-uploaded_file = st.file_uploader("Upload MRI image", type=["jpg", "png", "jpeg","JPG"])
-
-if uploaded_file:
-    image = Image.open(uploaded_file).resize((256, 256))
-    st.image(image, caption="Uploaded MRI", use_column_width=True)
-
-    img_array = np.array(image) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-
-    prediction = model.predict(img_array)[0][0]
-
-    if prediction > 0.5:
-        st.error("⚠️ Tumor detected")
-    else:
-        st.success("✅ No tumor detected")
+if os.path.exists(MODEL_PATH):
+    file_size = os.path.getsize(MODEL_PATH) / (1024 * 1024) 
+    st.info(f"Model file size: {file_size:.2f} MB")
+    
+    if file_size < 1:
+        st.warning("Model file seems too small. There might be an issue with the download.")
 
