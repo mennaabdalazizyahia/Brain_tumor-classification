@@ -5,36 +5,88 @@ from PIL import Image
 import gdown
 import os
 import time
+import h5py
+import json
 
 FILE_ID = "1MimIt5qq_NyzxqGoZIBakqv4JhdpkjRL"
 MODEL_PATH = "brain_tumor_model.h5"
 
+def fix_model_config():
+    try:
+        with h5py.File(MODEL_PATH, 'r+') as f:
+            if 'model_config' in f.attrs:
+                model_config = f.attrs['model_config']
+                if isinstance(model_config, bytes):
+                    model_config = model_config.decode('utf-8')
+                
+                model_config = model_config.replace('"batch_shape":', '"batch_input_shape":')
+                model_config = model_config.replace("'batch_shape':", "'batch_input_shape':")
+                
+                model_config = model_config.replace('"class_name": "InputLayer"', '"class_name": "InputLayer", "config": {"batch_input_shape": [null, 224, 224, 3]}')
+                
+                f.attrs['model_config'] = model_config.encode('utf-8')
+                return True
+        return False
+    except Exception as e:
+        st.warning(f"Config fix attempt: {e}")
+        return False
+
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
-        with st.spinner('📥 Downloading model... (This may take a few minutes)'):
+        with st.spinner('Downloading model... (This may take a few minutes)'):
             url = f"https://drive.google.com/uc?id={FILE_ID}"
             gdown.download(url, MODEL_PATH, quiet=False)
+            st.success("Model downloaded successfully!")
     
-    with st.spinner('🔄 Loading model...'):
+    if os.path.exists(MODEL_PATH):
+        file_size = os.path.getsize(MODEL_PATH) / (1024*1024)
+        st.info(f"Model file size: {file_size:.2f} MB")
+    
+    with st.spinner('Loading model...'):
         try:
             model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+            st.success("Model loaded successfully!")
             return model
         except Exception as e:
-            st.error(f"❌ Error loading model: {e}")
-            return None
+            st.warning(f"First attempt failed: {e}")
+            
+            try:
+                st.info("Attempting to fix model configuration...")
+                if fix_model_config():
+                    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+                    st.success("Model loaded after configuration fix!")
+                    return model
+            except Exception as e2:
+                st.error(f"Second attempt failed: {e2}")
+                
+            try:
+                st.info("Trying with custom objects...")
+                custom_objects = {
+                    'InputLayer': tf.keras.layers.InputLayer,
+                }
+                model = tf.keras.models.load_model(
+                    MODEL_PATH, 
+                    compile=False,
+                    custom_objects=custom_objects
+                )
+                st.success("Model loaded with custom objects!")
+                return model
+            except Exception as e3:
+                st.error(f"Third attempt failed: {e3}")
+                return None
 
 st.set_page_config(page_title="Brain Tumor Detection", page_icon="🧠", layout="wide")
 
 st.title("🧠 Brain Tumor Detection System")
 st.markdown("---")
-
+st.write(f"**TensorFlow Version:** {tf.__version__}")
 model = load_model()
 
 if model is not None:
-    st.success("✅ Model loaded successfully! Ready for predictions.")
+    st.success("Model loaded successfully! Ready for predictions.")
     
-    st.subheader("📤 Upload MRI Image")
+    st.subheader("Upload MRI Image")
     uploaded_file = st.file_uploader(
         "Choose an MRI scan image", 
         type=["jpg", "png", "jpeg", "JPG"],
@@ -52,7 +104,7 @@ if model is not None:
             st.info(f"Image size: {image.size} | Format: {image.format}")
         
         with col2:
-            st.subheader("Classification Results :- ")
+            st.subheader("Classification Results")
             
             processed_image = image.resize((224, 224))
             img_array = np.array(processed_image) / 255.0
@@ -81,10 +133,10 @@ if model is not None:
                         st.write(f"Tumor likelihood: {tumor_probability*100:.1f}%")
                     else:
                         progress_bar = st.progress(1 - tumor_probability)
-                        st.write(f" Healthy scan confidence: {(1-tumor_probability)*100:.1f}%")
+                        st.write(f"Healthy scan confidence: {(1-tumor_probability)*100:.1f}%")
                     
                     st.markdown("---")
-                    st.markdown(f"**⏱️ Processing Time:** {processing_time:.2f} seconds")
+                    st.markdown(f"**Processing Time:** {processing_time:.2f} seconds")
                     
                 except Exception as e:
                     st.error(f"❌ Prediction error: {e}")
@@ -94,14 +146,17 @@ if model is not None:
         
 else:
     st.error("""
-    - Failed to load the model. Possible solutions:
-    1. Check if the model file is compatible with TensorFlow 2.13.0
-    2. Try restarting the application
-    3. Verify the model file integrity
+    **❌ Failed to load the model. The model file might be:**
+    
+    - Created with a very old TensorFlow version
+    - Corrupted during download
+    - Incompatible with current TensorFlow
+    
+    **Please try re-downloading the model or contact the model provider.**
     """)
 
 with st.sidebar:
-    st.header("About : ")
+    st.header("About")
     st.markdown("""
     This AI-powered application analyzes MRI scans to detect potential brain tumors.
     
@@ -109,18 +164,11 @@ with st.sidebar:
     1. Upload a clear MRI scan image
     2. Wait for the analysis
     3. Review the results
-    
-    **Important Notes:**
-    - This tool is for screening purposes only
-    - Always consult with medical professionals
-    - Results should be verified by qualified radiologists
     """)
     
     st.header("Technical Info")
-    st.write(f"Model file: {MODEL_PATH}")
-    if os.path.exists(MODEL_PATH):
-        st.write(f"Model size: {os.path.getsize(MODEL_PATH) / (1024*1024):.2f} MB")
-    st.write(f"TensorFlow version: {tf.__version__}")
+    st.write(f"TensorFlow: {tf.__version__}")
+    st.write(f"Model: {MODEL_PATH}")
 
 st.markdown("---")
-st.markdown("*Built with using Streamlit and TensorFlow*")
+st.markdown("Built with Streamlit and TensorFlow")
