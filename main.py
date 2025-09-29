@@ -12,7 +12,7 @@ if not os.path.exists(MODEL_PATH):
     url = f"https://drive.google.com/uc?id={FILE_ID}"
     gdown.download(url, MODEL_PATH, quiet=False)
 
-model = tf.keras.models.load_model(MODEL_PATH)
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 st.title("🧠 Brain Tumor Detection")
 
@@ -31,3 +31,4 @@ if uploaded_file:
         st.error("⚠️ Tumor detected")
     else:
         st.success("✅ No tumor detected")
+
